@@ -18,7 +18,7 @@ class ICPSimple{
 public:
 
 
-    ICPSimple(PointCloudT &cloud_trg, const Eigen::Matrix4f &init_tf_mat);
+    ICPSimple(PointCloudT &cloud_trg);
 
     void constructKdTree(const PointCloudT::Ptr cloud_trg);
 

@@ -1,9 +1,8 @@
 #include <icp_simple.hpp>
 
-ICPSimple::ICPSimple(PointCloudT &cloud_trg, const Eigen::Matrix4f& init_tf_mat){
+ICPSimple::ICPSimple(PointCloudT &cloud_trg){
 
-    *cloud_trg_ = cloud_trg;
-    tf_mat_ = init_tf_mat;
+    cloud_trg_.reset(new PointCloudT(cloud_trg));
     pcl::compute3DCentroid(*cloud_trg_, com_trg_);
 
 }
@@ -15,17 +14,19 @@ void ICPSimple::constructKdTree(const PointCloudT::Ptr cloud_trg){
 
 void ICPSimple::alignStep(PointCloudT &cloud_tf){
 
-    // Transform cloud_tf based on latest tf
-    pcl::transformPointCloud(cloud_tf, cloud_tf, tf_mat_);
-    std::cout << "PCL transformed " << std::endl;
-
     // Find matches tuples
     std::vector<std::tuple<PointT, PointT>> matches_vec = matchPointClouds(cloud_tf);
-    std::cout << "Correspondences found " << std::endl;
 
     // Solve to extract tf matrix
     computeTransformationMatrix(matches_vec, cloud_tf, tf_mat_);
-    std::cout << "Transformation extracted " << std::endl;
+
+    // Transform cloud_tf based on latest tf
+    pcl::transformPointCloud(cloud_tf, cloud_tf, tf_mat_);
+
+    // Root Mean Square Error to measure convergence
+    double rmsError = computeRMSError(cloud_tf);
+
+    printf("RMS Error: %f \n", rmsError);
 }
 
 void ICPSimple::getTransformMatrix(Eigen::Matrix4f& transform_matrix){
@@ -44,12 +45,13 @@ std::vector<std::tuple<PointT, PointT>> ICPSimple::matchPointClouds(PointCloudT 
     std::vector<std::tuple<PointT, PointT>> matches_vec;
     for(PointT point_i: cloud_tf.points){
 //        count = kdtree.radiusSearch (searchPoint, radius, pointIdxRadiusSearch, pointsSquaredDistRadius); // TODO: Try radius search?
-        if(kdtree_.nearestKSearch (point_i, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0){
+        if(kdtree_.nearestKSearch(point_i, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0){
             if(pointNKNSquaredDistance[0] <= dmax_squared){
                 matches_vec.push_back(std::make_tuple(cloud_trg_->points[pointIdxNKNSearch[0]], point_i));
             }
         }
     }
+    printf("Size of matches vector %d \n", matches_vec.size());
 
     return matches_vec;
 }

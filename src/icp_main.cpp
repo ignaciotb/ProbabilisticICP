@@ -118,6 +118,7 @@ int main (int argc, char* argv[]) {
     return (-1);
   }
   std::cout << "\nLoaded file " << argv[1] << " (" << cloud_in->size () << " points) in " << time.toc () << " ms\n" << std::endl;
+  printf("Size of input cloud %d \n", cloud_in->points.size());
 
   // Defining a rotation matrix and translation vector
   Eigen::Matrix4f transformation_matrix = Eigen::Matrix4f::Identity();
