@@ -108,3 +108,27 @@ void ICPSimple::computeTransformationMatrix(const std::vector<std::tuple<PointT,
     transformation_matrix.block(0, 3, 3, 1) = com_trg_.head(3) - Rc;
 
 }
+
+double ICPSimple::computeRMSError(PointCloudT& cloud_tf){
+
+    // Find matches tuples
+    std::vector<std::tuple<PointT, PointT>> matches_vec = matchPointClouds(cloud_tf);
+
+    // Compute RMS Error
+    double rmsError = 0;
+    PointT diff;
+    for(std::tuple<PointT, PointT> match: matches_vec){
+        diff.getArray3fMap() = std::get<0>(match).getArray3fMap() - std::get<1>(match).getArray3fMap();
+        rmsError += Eigen::Vector3f(diff.x, diff.y, diff.z).norm();
+    }
+
+    return std::sqrt(rmsError / matches_vec.size());
+}
+
+
+
+
+
+
+
+

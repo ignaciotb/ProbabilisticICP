@@ -44,6 +44,8 @@ private:
                                      Eigen::Matrix4f& transformation_matrix);
 
     std::vector<std::tuple<PointT, PointT>> matchPointClouds(PointCloudT &cloud_tf);
+
+    double computeRMSError(PointCloudT &cloud_tf);
 };
 
 #endif // ICP_SIMPLE_CPP
