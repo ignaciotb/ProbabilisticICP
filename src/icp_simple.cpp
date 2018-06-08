@@ -7,6 +7,14 @@ ICPSimple::ICPSimple(PointCloudT &cloud_trg){
 
 }
 
+void ICPSimple::getTransformMatrix(Eigen::Matrix4f& transform_matrix){
+    transform_matrix = tf_mat_;
+}
+
+double ICPSimple::getRMSError(){
+    return rms_error_;
+}
+
 void ICPSimple::constructKdTree(const PointCloudT::Ptr cloud_trg){
     // Construct Kd Tree with target cloud
     kdtree_.setInputCloud(cloud_trg);
@@ -24,13 +32,9 @@ void ICPSimple::alignStep(PointCloudT &cloud_tf){
     pcl::transformPointCloud(cloud_tf, cloud_tf, tf_mat_);
 
     // Root Mean Square Error to measure convergence
-    double rmsError = computeRMSError(cloud_tf);
+    rms_error_ = computeRMSError(cloud_tf);
 
     printf("RMS Error: %f \n", rmsError);
-}
-
-void ICPSimple::getTransformMatrix(Eigen::Matrix4f& transform_matrix){
-    transform_matrix = tf_mat_;
 }
 
 std::vector<std::tuple<PointT, PointT>> ICPSimple::matchPointClouds(PointCloudT &cloud_tf){

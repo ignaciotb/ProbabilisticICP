@@ -36,11 +36,3 @@ add_executable (icp_main
 target_link_libraries (icp_main
     ${PCL_LIBRARIES}
 )
-
-add_executable (kdtree_search
-    src/kdtree_search_pcl.cpp
-)
-
-target_link_libraries (kdtree_search
-    ${PCL_LIBRARIES}
-)

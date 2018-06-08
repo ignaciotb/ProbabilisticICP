@@ -17,17 +17,17 @@ typedef pcl::PointCloud<PointT> PointCloudT;
 bool next_iteration = false;
 
 void print4x4Matrix (const Eigen::Matrix4f & matrix) {
-  printf ("Rotation matrix :\n");
-  printf ("    | %6.3f %6.3f %6.3f | \n", matrix (0, 0), matrix (0, 1), matrix (0, 2));
-  printf ("R = | %6.3f %6.3f %6.3f | \n", matrix (1, 0), matrix (1, 1), matrix (1, 2));
-  printf ("    | %6.3f %6.3f %6.3f | \n", matrix (2, 0), matrix (2, 1), matrix (2, 2));
-  printf ("Translation vector :\n");
-  printf ("t = < %6.3f, %6.3f, %6.3f >\n\n", matrix (0, 3), matrix (1, 3), matrix (2, 3));
+    printf ("Rotation matrix :\n");
+    printf ("    | %6.3f %6.3f %6.3f | \n", matrix (0, 0), matrix (0, 1), matrix (0, 2));
+    printf ("R = | %6.3f %6.3f %6.3f | \n", matrix (1, 0), matrix (1, 1), matrix (1, 2));
+    printf ("    | %6.3f %6.3f %6.3f | \n", matrix (2, 0), matrix (2, 1), matrix (2, 2));
+    printf ("Translation vector :\n");
+    printf ("t = < %6.3f, %6.3f, %6.3f >\n\n", matrix (0, 3), matrix (1, 3), matrix (2, 3));
 }
 
 void keyboardEventOccurred (const pcl::visualization::KeyboardEvent& event, void* nothing) {
-  if (event.getKeySym () == "space" && event.keyDown ())
-    next_iteration = true;
+    if (event.getKeySym () == "space" && event.keyDown ())
+        next_iteration = true;
 }
 
 void pclVisualizer(pcl::visualization::PCLVisualizer& viewer,
@@ -84,84 +84,80 @@ void pclVisualizer(pcl::visualization::PCLVisualizer& viewer,
 
 
 int main (int argc, char* argv[]) {
-  // The point clouds we will be using
-  PointCloudT::Ptr cloud_in (new PointCloudT);  // Original point cloud
-  PointCloudT::Ptr cloud_tr (new PointCloudT);  // Transformed point cloud
-  PointCloudT::Ptr cloud_icp (new PointCloudT);  // ICP output point cloud
+    // The point clouds we will be using
+    PointCloudT::Ptr cloud_in (new PointCloudT);  // Original point cloud
+    PointCloudT::Ptr cloud_tr (new PointCloudT);  // Transformed point cloud
+    PointCloudT::Ptr cloud_icp (new PointCloudT);  // ICP output point cloud
 
-  // Checking program arguments
-//  if (argc < 2)
-//  {
-//    printf ("Usage :\n");
-//    printf ("\t\t%s file.ply number_of_ICP_iterations\n", argv[0]);
-//    PCL_ERROR ("Provide one ply file.\n");
-//    return (-1);
-//  }
-
-  int iterations = 1;  // Default number of ICP iterations
-  if (argc > 2)
-  {
-    // If the user passed the number of iteration as an argument
-    iterations = atoi (argv[2]);
-    if (iterations < 1)
-    {
-      PCL_ERROR ("Number of initial iterations must be >= 1\n");
-      return (-1);
+    // Checking program arguments
+    if(argc < 2){
+        printf ("Usage :\n");
+        printf ("\t\t%s file.ply number_of_ICP_iterations\n", argv[0]);
+        PCL_ERROR ("Provide one ply file.\n");
+        return (-1);
     }
-  }
 
-  pcl::console::TicToc time;
-  time.tic ();
-  if (pcl::io::loadPLYFile ("../meshes/monkey.ply" /*argv[1]*/, *cloud_in) < 0)
-  {
-    PCL_ERROR ("Error loading cloud %s.\n", argv[1]);
-    return (-1);
-  }
-  std::cout << "\nLoaded file " << argv[1] << " (" << cloud_in->size () << " points) in " << time.toc () << " ms\n" << std::endl;
-  printf("Size of input cloud %d \n", cloud_in->points.size());
+    int iterations = 1;  // Default number of ICP iterations
+    if (argc > 2){
+        // If the user passed the number of iteration as an argument
+        iterations = atoi (argv[2]);
+        if (iterations < 1){
+            PCL_ERROR ("Number of initial iterations must be >= 1\n");
+            return (-1);
+        }
+    }
 
-  // Defining a rotation matrix and translation vector
-  Eigen::Matrix4f transformation_matrix = Eigen::Matrix4f::Identity();
+    pcl::console::TicToc time;
+    time.tic ();
+    if (pcl::io::loadPLYFile (/*"../meshes/monkey.ply"*/ argv[1], *cloud_in) < 0){
+        PCL_ERROR ("Error loading cloud %s.\n", argv[1]);
+        return (-1);
+    }
+    std::cout << "\nLoaded file " << argv[1] << " (" << cloud_in->size () << " points) in " << time.toc () << " ms\n" << std::endl;
+    printf("Size of input cloud %d \n", cloud_in->points.size());
 
-  // A rotation matrix (see https://en.wikipedia.org/wiki/Rotation_matrix)
-  double theta = M_PI / 8;  // The angle of rotation in radians
-  transformation_matrix (0, 0) = cos (theta);
-  transformation_matrix (0, 1) = -sin (theta);
-  transformation_matrix (1, 0) = sin (theta);
-  transformation_matrix (1, 1) = cos (theta);
+    // Defining a rotation matrix and translation vector
+    Eigen::Matrix4f transformation_matrix = Eigen::Matrix4f::Identity();
 
-  // A translation on Z axis (0.4 meters)
-  transformation_matrix (1, 3) = -0.2;
-  transformation_matrix (2, 3) = -0.4;
-  transformation_matrix (3, 3) = -0.2;
+    // A rotation matrix (see https://en.wikipedia.org/wiki/Rotation_matrix)
+    double theta = M_PI / 8;  // The angle of rotation in radians
+    transformation_matrix (0, 0) = cos (theta);
+    transformation_matrix (0, 1) = -sin (theta);
+    transformation_matrix (1, 0) = sin (theta);
+    transformation_matrix (1, 1) = cos (theta);
 
-  // Display in terminal the transformation matrix
-  printf("Applying this rigid transformation to: cloud_in -> cloud_icp \n");
-  print4x4Matrix (transformation_matrix);
+    // A translation on Z axis (0.4 meters)
+    transformation_matrix (1, 3) = -0.2;
+    transformation_matrix (2, 3) = -0.4;
+    transformation_matrix (3, 3) = -0.2;
 
-  // Executing the transformation
-  pcl::transformPointCloud(*cloud_in, *cloud_icp, transformation_matrix);
-  *cloud_tr = *cloud_icp;  // We backup cloud_icp into cloud_tr for later use
+    // Display in terminal the transformation matrix
+    printf("Applying this rigid transformation to: cloud_in -> cloud_icp \n");
+    print4x4Matrix (transformation_matrix);
 
-  // The Iterative Closest Point algorithm
-  boost::shared_ptr<ICPSimple> icp_solver(new ICPSimple(*cloud_in));
-  printf("Solver created \n");
+    // Executing the transformation
+    pcl::transformPointCloud(*cloud_in, *cloud_icp, transformation_matrix);
+    *cloud_tr = *cloud_icp;  // We backup cloud_icp into cloud_tr for later use
 
-  // Construct KdTree for target pcl
-  icp_solver->constructKdTree(cloud_in);
-  printf("Kd tree created \n");
+    // The Iterative Closest Point algorithm
+    boost::shared_ptr<ICPSimple> icp_solver(new ICPSimple(*cloud_in));
+    printf("Solver created \n");
 
-  // Visualization
-  pcl::visualization::PCLVisualizer viewer ("ICP demo");
-  std::stringstream ss;
-  pclVisualizer(viewer, cloud_in, cloud_tr, cloud_icp, ss, iterations);
-  pcl::visualization::PointCloudColorHandlerCustom<PointT> cloud_icp_color_h (cloud_icp, 180, 20, 20);
-  float bckgr_gray_level = 0.0;  // Black
-  float txt_gray_lvl = 1.0 - bckgr_gray_level;
+    // Construct KdTree for target pcl
+    icp_solver->constructKdTree(cloud_in);
+    printf("Kd tree created \n");
 
-  // Display the visualiser
-  while (!viewer.wasStopped()){
-    viewer.spinOnce ();
+    // Visualization
+    pcl::visualization::PCLVisualizer viewer ("ICP demo");
+    std::stringstream ss;
+    pclVisualizer(viewer, cloud_in, cloud_tr, cloud_icp, ss, iterations);
+    pcl::visualization::PointCloudColorHandlerCustom<PointT> cloud_icp_color_h (cloud_icp, 180, 20, 20);
+    float bckgr_gray_level = 0.0;  // Black
+    float txt_gray_lvl = 1.0 - bckgr_gray_level;
+
+    // Display the visualiser
+    while (!viewer.wasStopped()){
+        viewer.spinOnce ();
 
     // The user pressed "space" :
     if (next_iteration){
@@ -176,13 +172,12 @@ int main (int argc, char* argv[]) {
         ss.str ("");
         ss << iterations;
         std::string iterations_cnt = "ICP iterations = " + ss.str ();
-        viewer.updateText (iterations_cnt, 10, 60, 16, txt_gray_lvl, txt_gray_lvl, txt_gray_lvl, "iterations_cnt");
+        viewer.updateText(iterations_cnt, 10, 60, 16, txt_gray_lvl, txt_gray_lvl, txt_gray_lvl, "iterations_cnt");
 
         // Update point cloud viewer
-//        pcl::transformPointCloud(*cloud_icp, *cloud_tr, transformation_matrix);
         viewer.updatePointCloud (cloud_icp, cloud_icp_color_h, "cloud_icp_v2");
+        }
+        next_iteration = false;
     }
-    next_iteration = false;
-  }
-  return (0);
+    return (0);
 }

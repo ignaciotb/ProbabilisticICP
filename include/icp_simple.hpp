@@ -26,6 +26,8 @@ public:
 
     void getTransformMatrix(Eigen::Matrix4f& transform_matrix);
 
+    double getRMSError();
+
 private:
 
     // Inputs
@@ -37,6 +39,9 @@ private:
 
     // Center of mass of target cloud
     Eigen::Vector4f com_trg_;
+
+    // Convergence error
+    double rms_error_;
 
     // Methods
     void computeTransformationMatrix(const std::vector<std::tuple<PointT, PointT>>& matches_vec,
