@@ -36,8 +36,8 @@ void ICPSimple::getTransformMatrix(Eigen::Matrix4f& transform_matrix){
 std::vector<std::tuple<PointT, PointT>> ICPSimple::matchPointClouds(PointCloudT &cloud_tf){
 
     // K nearest neighbor search
-    int K = 1;
-    double dmax_squared = std::pow(0.1, 2);
+    int K = 3;
+    double dmax_squared = std::pow(0.5, 2);
 
     std::vector<int> pointIdxNKNSearch(K);
     std::vector<float> pointNKNSquaredDistance(K);
@@ -66,39 +66,37 @@ void ICPSimple::computeTransformationMatrix(const std::vector<std::tuple<PointT,
     pcl::compute3DCentroid(cloud_tf, com_tf);
 
     // Demean all points in the matches
-    Eigen::MatrixXf tf_demean = Eigen::MatrixXf(4, matches_vec.size());
-    Eigen::MatrixXf trg_demean = Eigen::MatrixXf(matches_vec.size(), 4);
+    Eigen::MatrixXf trg_demean = Eigen::MatrixXf::Zero(3, matches_vec.size());
+    Eigen::MatrixXf tf_demean = Eigen::MatrixXf::Zero(matches_vec.size(), 3);
 
     unsigned int match_cnt = 0;
     for(std::tuple<PointT, PointT> match: matches_vec){
-        trg_demean.col(match_cnt) = Eigen::Vector4f(std::get<0>(match).x,
+        trg_demean.col(match_cnt) = Eigen::Vector3f(std::get<0>(match).x,
                                                     std::get<0>(match).y,
-                                                    std::get<0>(match).z,
-                                                    1) - com_trg_;
+                                                    std::get<0>(match).z) - com_trg_.head(3);
 
-        tf_demean.row(match_cnt) = Eigen::Vector4f(std::get<1>(match).x,
+        tf_demean.row(match_cnt) = (Eigen::Vector3f(std::get<1>(match).x,
                                                     std::get<1>(match).y,
-                                                    std::get<1>(match).z,
-                                                    1) - com_tf;
+                                                    std::get<1>(match).z) - com_tf.head(3)).transpose();
+
         match_cnt += 1;
     }
 
     // Assemble the correlation matrix H = source * target'
-    Eigen::Matrix3f H = (trg_demean * tf_demean).topLeftCorner(3, 3);
+    Eigen::Matrix3f H = trg_demean * tf_demean;
 
     // Compute the Singular Value Decomposition
-    Eigen::JacobiSVD<Eigen::Matrix3f > svd (H, Eigen::ComputeFullU | Eigen::ComputeFullV);
+    Eigen::JacobiSVD<Eigen::Matrix3f> svd(H, Eigen::ComputeFullU | Eigen::ComputeFullV);
     Eigen::Matrix3f u = svd.matrixU();
     Eigen::Matrix3f v = svd.matrixV();
 
-    // Compute R = V * U'
+    // Compute R = U * V'
     if(u.determinant() * v.determinant() < 0) {
         for(int x = 0; x < 3; ++x) {
             v(x, 2) *= -1;
         }
     }
-
-    Eigen::Matrix3f R = v * u.transpose();
+    Eigen::Matrix3f R = u * v.transpose();
 
     // Return the correct transformation
     transformation_matrix.setIdentity();
