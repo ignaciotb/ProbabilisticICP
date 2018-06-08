@@ -131,10 +131,12 @@ int main (int argc, char* argv[]) {
   transformation_matrix (1, 1) = cos (theta);
 
   // A translation on Z axis (0.4 meters)
-  transformation_matrix (2, 3) = 0.4;
+  transformation_matrix (1, 3) = -0.2;
+  transformation_matrix (2, 3) = -0.4;
+  transformation_matrix (3, 3) = -0.2;
 
   // Display in terminal the transformation matrix
-  std::cout << "Applying this rigid transformation to: cloud_in -> cloud_icp" << std::endl;
+  printf("Applying this rigid transformation to: cloud_in -> cloud_icp \n");
   print4x4Matrix (transformation_matrix);
 
   // Executing the transformation
@@ -142,33 +144,12 @@ int main (int argc, char* argv[]) {
   *cloud_tr = *cloud_icp;  // We backup cloud_icp into cloud_tr for later use
 
   // The Iterative Closest Point algorithm
-  boost::shared_ptr<ICPSimple> icp_solver(new ICPSimple(*cloud_in, transformation_matrix));
-  std::cout << "Solver created " << std::endl;
+  boost::shared_ptr<ICPSimple> icp_solver(new ICPSimple(*cloud_in));
+  printf("Solver created \n");
+
   // Construct KdTree for target pcl
   icp_solver->constructKdTree(cloud_in);
-  std::cout << "Kd tree created " << std::endl;
-
-//  time.tic ();
-//  pcl::IterativeClosestPoint<PointT, PointT> icp;
-//  icp.setMaximumIterations (iterations);
-//  icp.setInputSource (cloud_icp);
-//  icp.setInputTarget (cloud_in);
-//  icp.align (*cloud_icp);
-//  icp.setMaximumIterations (1);  // We set this variable to 1 for the next time we will call .align () function
-//  std::cout << "Applied " << iterations << " ICP iteration(s) in " << time.toc () << " ms" << std::endl;
-
-//  if (icp.hasConverged ())
-//  {
-//    std::cout << "\nICP has converged, score is " << icp.getFitnessScore () << std::endl;
-//    std::cout << "\nICP transformation " << iterations << " : cloud_icp -> cloud_in" << std::endl;
-//    transformation_matrix = icp.getFinalTransformation ().cast<double>();
-//    print4x4Matrix (transformation_matrix);
-//  }
-//  else
-//  {
-//    PCL_ERROR ("\nICP has not converged.\n");
-//    return (-1);
-//  }
+  printf("Kd tree created \n");
 
   // Visualization
   pcl::visualization::PCLVisualizer viewer ("ICP demo");
@@ -184,19 +165,12 @@ int main (int argc, char* argv[]) {
 
     // The user pressed "space" :
     if (next_iteration){
-
+        printf("----------- Next iteration --------- \n");
         // The Iterative Closest Point algorithm
         time.tic ();
         icp_solver->alignStep(*cloud_icp);
-//      icp.align (*cloud_icp);
         std::cout << "Applied 1 ICP iteration in " << time.toc () << " ms" << std::endl;
-
-//      if (icp.hasConverged ())
-//      {
-//        printf ("\033[11A");  // Go up 11 lines in terminal output.
-//        printf ("\nICP has converged, score is %+.0e\n", icp.getFitnessScore ());
-//        std::cout << "\nICP transformation " << ++iterations << " : cloud_icp -> cloud_in" << std::endl;
-        icp_solver->getTransformMatrix(transformation_matrix);  // WARNING /!\ This is not accurate! For "educational" purpose only!
+        icp_solver->getTransformMatrix(transformation_matrix);
         print4x4Matrix (transformation_matrix);  // Print the transformation between original pose and current pose
 
         ss.str ("");
@@ -205,14 +179,8 @@ int main (int argc, char* argv[]) {
         viewer.updateText (iterations_cnt, 10, 60, 16, txt_gray_lvl, txt_gray_lvl, txt_gray_lvl, "iterations_cnt");
 
         // Update point cloud viewer
-        pcl::transformPointCloud(*cloud_icp, *cloud_icp, transformation_matrix);
+//        pcl::transformPointCloud(*cloud_icp, *cloud_tr, transformation_matrix);
         viewer.updatePointCloud (cloud_icp, cloud_icp_color_h, "cloud_icp_v2");
-//      }
-//      else
-//      {
-//        PCL_ERROR ("\nICP has not converged.\n");
-//        return (-1);
-//      }
     }
     next_iteration = false;
   }
