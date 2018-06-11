@@ -53,16 +53,21 @@ std::vector<std::tuple<PointT, PointT>> ICPSimple::matchPointClouds(PointCloudT 
 
     // Point-point probabilistic association
     Eigen::Vector3d error_mean;
-    Eigen::Matrix3d error_cov;
     double pow_mhl_dist;
     std::vector<int> set_Ai;
-    Eigen::Matrix3d jacobian_1 = Eigen::Matrix3d::Zero();
-    jacobian_1(0,0) = 0.1;
-    jacobian_1(1,1) = 0.1;
-    jacobian_1(2,2) = 0.1;
 
-    std::vector<std::tuple<PointT, PointT>> matches_vec;
+    // TODO: project tf_noise_ to pcl_noise subspace with the appropiate jacobian
+    Eigen::Matrix3d jacobian_1 = Eigen::Matrix3d::Zero();
+    jacobian_1(0,0) = tf_mat_(0,0);
+    jacobian_1(1,1) = tf_mat_(0,0);
+    jacobian_1(2,2) = 1;
+
+    // Covariance matrix of error distribution: since pcls and tf have const covariances, it can be computed only once
+    Eigen::Matrix3d error_cov_inv = (pcl_noise_ + jacobian_1 * tf_noise_ * jacobian_1.transpose() + pcl_noise_).inverse();
+
     // For every point in transformed pcl
+    std::vector<std::tuple<PointT, PointT>> matches_vec;
+    std::vector<int>::iterator min_match_it;
     for(PointT point_i: cloud_tf.points){
         // Find kNN
         if(kdtree_.nearestKSearch(point_i, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0){
@@ -73,21 +78,18 @@ std::vector<std::tuple<PointT, PointT>> ICPSimple::matchPointClouds(PointCloudT 
                                              cloud_trg_->points[pointTrgId].y - point_i.y,
                                              cloud_trg_->points[pointTrgId].z - point_i.z);
 
-                error_cov = pcl_noise_ + tf_noise_ + pcl_noise_;    // TODO: project tf_noise_ to pcl_noise subspace with the appropiate jacobian
-
                 // Mahalanobis distance
-                pow_mhl_dist = error_mean.transpose() * error_cov.inverse() * error_mean;
+                pow_mhl_dist = error_mean.transpose() * error_cov_inv * error_mean;
 
                 // If Mhl dist smaller than Xi squared threshold, add to set of compatible points
-                if(pow_mhl_dist < lambda_thr_ * 10){
+                if(pow_mhl_dist < lambda_thr_){
                     set_Ai.push_back(pointTrgId);
                 }
             }
             // The match with smallest Mhl distance is selected
             if(!set_Ai.empty()){
-                std::vector<int>::iterator result = std::min_element(std::begin(set_Ai), std::end(set_Ai));
-                int it = set_Ai.at(std::distance(std::begin(set_Ai), result));
-                matches_vec.push_back(std::make_tuple(cloud_trg_->points[it], point_i));
+                min_match_it = std::min_element(std::begin(set_Ai), std::end(set_Ai));
+                matches_vec.push_back(std::make_tuple(cloud_trg_->points[set_Ai.at(std::distance(std::begin(set_Ai), min_match_it))], point_i));
                 set_Ai.clear();
             }
         }

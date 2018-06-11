@@ -122,7 +122,7 @@ int main (int argc, char* argv[]) {
     Eigen::Matrix4f transformation_matrix = Eigen::Matrix4f::Identity();
 
     // A rotation matrix (see https://en.wikipedia.org/wiki/Rotation_matrix)
-    double theta = M_PI / 8;  // The angle of rotation in radians
+    double theta = M_PI / 5;  // The angle of rotation in radians
     transformation_matrix (0, 0) = cos (theta);
     transformation_matrix (0, 1) = -sin (theta);
     transformation_matrix (1, 0) = sin (theta);
@@ -144,7 +144,7 @@ int main (int argc, char* argv[]) {
     // Add independent gaussian noise to cloud_in and cloud_icp
     std::random_device rd{};
     std::mt19937 seed{rd()};
-    double pcl_std_dev = 0.01;
+    double pcl_std_dev = 0.05;
     std::normal_distribution<double> d{0,pcl_std_dev};    // Inputs: mean and std_dev
     for(unsigned int i=0; i<cloud_in->points.size(); i++){
         cloud_in->points.at(i).x = cloud_in->points.at(i).x + d(seed);
@@ -163,7 +163,7 @@ int main (int argc, char* argv[]) {
     pcl_noise(2,2) = std::pow(pcl_std_dev,2);
 
     // Apply initial (noisy) estimate of transform between trg and src point clouds
-    double tf_std_dev = 0.05;
+    double tf_std_dev = 0.15;
     std::normal_distribution<double> d2{0,tf_std_dev};
     theta = M_PI / 8 + d2(seed);
     transformation_matrix (0, 0) = cos (theta);
