@@ -10,6 +10,8 @@
 
 #include <eigen3/Eigen/Core>
 
+#include <boost/math/distributions.hpp>
+
 typedef pcl::PointXYZ PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
 
@@ -18,7 +20,7 @@ class ICPSimple{
 public:
 
 
-    ICPSimple(PointCloudT &cloud_trg);
+    ICPSimple(PointCloudT &cloud_trg, const Eigen::Matrix3d& tf_noise, const Eigen::Matrix3d& pcl_noise, double delta_thr);
 
     void constructKdTree(const PointCloudT::Ptr cloud_trg);
 
@@ -32,6 +34,10 @@ private:
 
     // Inputs
     PointCloudT::Ptr cloud_trg_;
+    Eigen::Matrix3d tf_noise_;
+    Eigen::Matrix3d pcl_noise_;
+
+    // Estimated tf
     Eigen::Matrix4f tf_mat_;
 
     // KdTree of target cloud
@@ -42,6 +48,9 @@ private:
 
     // Convergence error
     double rms_error_;
+
+    // Aux
+    double lambda_thr_;
 
     // Methods
     void computeTransformationMatrix(const std::vector<std::tuple<PointT, PointT>>& matches_vec,

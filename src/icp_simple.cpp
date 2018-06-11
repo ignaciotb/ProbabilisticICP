@@ -1,9 +1,16 @@
 #include <icp_simple.hpp>
 
-ICPSimple::ICPSimple(PointCloudT &cloud_trg){
+ICPSimple::ICPSimple(PointCloudT &cloud_trg, const Eigen::Matrix3d& tf_noise, const Eigen::Matrix3d& pcl_noise, double delta_thr){
 
     cloud_trg_.reset(new PointCloudT(cloud_trg));
     pcl::compute3DCentroid(*cloud_trg_, com_trg_);
+
+    tf_noise_ = tf_noise;
+    pcl_noise_ = pcl_noise;
+
+    // Create Xi squared dist to filter out outliers in matching
+    boost::math::chi_squared chi2_dist(3);
+    lambda_thr_ = boost::math::quantile(chi2_dist, delta_thr);
 
 }
 
@@ -34,24 +41,54 @@ void ICPSimple::alignStep(PointCloudT &cloud_tf){
     // Root Mean Square Error to measure convergence
     rms_error_ = computeRMSError(cloud_tf);
 
-    printf("RMS Error: %f \n", rmsError);
+    printf("RMS Error: %f \n", rms_error_);
 }
 
 std::vector<std::tuple<PointT, PointT>> ICPSimple::matchPointClouds(PointCloudT &cloud_tf){
 
     // K nearest neighbor search
     int K = 3;
-    double dmax_squared = std::pow(0.5, 2);
-
     std::vector<int> pointIdxNKNSearch(K);
     std::vector<float> pointNKNSquaredDistance(K);
 
+    // Point-point probabilistic association
+    Eigen::Vector3d error_mean;
+    Eigen::Matrix3d error_cov;
+    double pow_mhl_dist;
+    std::vector<int> set_Ai;
+    Eigen::Matrix3d jacobian_1 = Eigen::Matrix3d::Zero();
+    jacobian_1(0,0) = 0.1;
+    jacobian_1(1,1) = 0.1;
+    jacobian_1(2,2) = 0.1;
+
     std::vector<std::tuple<PointT, PointT>> matches_vec;
+    // For every point in transformed pcl
     for(PointT point_i: cloud_tf.points){
-//        count = kdtree.radiusSearch (searchPoint, radius, pointIdxRadiusSearch, pointsSquaredDistRadius); // TODO: Try radius search?
+        // Find kNN
         if(kdtree_.nearestKSearch(point_i, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0){
-            if(pointNKNSquaredDistance[0] <= dmax_squared){
-                matches_vec.push_back(std::make_tuple(cloud_trg_->points[pointIdxNKNSearch[0]], point_i));
+            // For every potential nearest neighbor
+            for(int pointTrgId: pointIdxNKNSearch){
+                // Mean and cov mat of error distribution
+                error_mean = Eigen::Vector3d(cloud_trg_->points[pointTrgId].x - point_i.x,
+                                             cloud_trg_->points[pointTrgId].y - point_i.y,
+                                             cloud_trg_->points[pointTrgId].z - point_i.z);
+
+                error_cov = pcl_noise_ + tf_noise_ + pcl_noise_;    // TODO: project tf_noise_ to pcl_noise subspace with the appropiate jacobian
+
+                // Mahalanobis distance
+                pow_mhl_dist = error_mean.transpose() * error_cov.inverse() * error_mean;
+
+                // If Mhl dist smaller than Xi squared threshold, add to set of compatible points
+                if(pow_mhl_dist < lambda_thr_ * 10){
+                    set_Ai.push_back(pointTrgId);
+                }
+            }
+            // The match with smallest Mhl distance is selected
+            if(!set_Ai.empty()){
+                std::vector<int>::iterator result = std::min_element(std::begin(set_Ai), std::end(set_Ai));
+                int it = set_Ai.at(std::distance(std::begin(set_Ai), result));
+                matches_vec.push_back(std::make_tuple(cloud_trg_->points[it], point_i));
+                set_Ai.clear();
             }
         }
     }
