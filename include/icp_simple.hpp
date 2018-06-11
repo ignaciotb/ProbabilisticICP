@@ -9,6 +9,7 @@
 #include <functional>
 
 #include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Eigenvalues>
 
 #include <boost/math/distributions.hpp>
 
@@ -57,9 +58,13 @@ private:
                                      const PointCloudT &cloud_tf,
                                      Eigen::Matrix4f& transformation_matrix);
 
-    std::vector<std::tuple<PointT, PointT>> matchPointClouds(PointCloudT &cloud_tf);
+    std::vector<std::tuple<PointT, PointT>> point2PointAssoc(PointCloudT &cloud_tf);
+
+    std::vector<std::tuple<PointT, PointT>> point2PlaneAssoc(PointCloudT &cloud_tf);
 
     double computeRMSError(PointCloudT &cloud_tf);
+
+    void computePCAPcl(PointCloudT &set_Ai);
 };
 
 #endif // ICP_SIMPLE_CPP

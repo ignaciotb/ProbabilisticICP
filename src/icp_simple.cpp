@@ -30,7 +30,7 @@ void ICPSimple::constructKdTree(const PointCloudT::Ptr cloud_trg){
 void ICPSimple::alignStep(PointCloudT &cloud_tf){
 
     // Find matches tuples
-    std::vector<std::tuple<PointT, PointT>> matches_vec = matchPointClouds(cloud_tf);
+    std::vector<std::tuple<PointT, PointT>> matches_vec = point2PointAssoc(cloud_tf);
 
     // Solve to extract tf matrix
     computeTransformationMatrix(matches_vec, cloud_tf, tf_mat_);
@@ -44,7 +44,99 @@ void ICPSimple::alignStep(PointCloudT &cloud_tf){
     printf("RMS Error: %f \n", rms_error_);
 }
 
-std::vector<std::tuple<PointT, PointT>> ICPSimple::matchPointClouds(PointCloudT &cloud_tf){
+
+std::vector<std::tuple<PointT, PointT>> ICPSimple::point2PlaneAssoc(PointCloudT &cloud_tf){
+
+    // K nearest neighbor search
+    int K = 3;
+    std::vector<int> pointIdxNKNSearch(K);
+    std::vector<float> pointNKNSquaredDistance(K);
+
+    // Point-point probabilistic association
+    Eigen::Vector3d error_mean;
+    double pow_mhl_dist;
+    PointCloudT set_AiPCL;
+
+    // TODO: project tf_noise_ to pcl_noise subspace with the appropiate jacobian
+    Eigen::Matrix3d jacobian_1 = Eigen::Matrix3d::Zero();
+    jacobian_1(0,0) = tf_mat_(0,0);
+    jacobian_1(1,1) = tf_mat_(0,0);
+    jacobian_1(2,2) = 1;
+
+    // Covariance matrix of error distribution: since pcls and tf have const covariances, it can be computed only once
+    Eigen::Matrix3d error_cov_inv = (pcl_noise_ + jacobian_1 * tf_noise_ * jacobian_1.transpose() + pcl_noise_).inverse();
+
+    // For every point in transformed pcl
+    std::vector<std::tuple<PointT, PointT>> matches_vec;
+    for(PointT point_i: cloud_tf.points){
+        // Find kNN
+        if(kdtree_.nearestKSearch(point_i, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0){
+            // For every potential nearest neighbor
+            for(int pointTrgId: pointIdxNKNSearch){
+                // Mean and cov mat of error distribution
+                error_mean = Eigen::Vector3d(cloud_trg_->points[pointTrgId].x - point_i.x,
+                                             cloud_trg_->points[pointTrgId].y - point_i.y,
+                                             cloud_trg_->points[pointTrgId].z - point_i.z);
+
+                // Mahalanobis distance
+                pow_mhl_dist = error_mean.transpose() * error_cov_inv * error_mean;
+
+                // If Mhl dist smaller than Xi squared threshold, add to set of compatible points
+                if(pow_mhl_dist < lambda_thr_){
+                    set_AiPCL.points.push_back(cloud_trg_->points[pointTrgId]);
+                }
+            }
+            // Point to Plane association: fit a plane to the points in set_Ai
+            if(!set_AiPCL.points.size() >= 3){    // TODO: ensure size of set_Ai >= 3
+
+                // Weighted center of set of points Ai
+                PointT sum_pointsj(0,0,0);
+                double sum_traces = 0;
+                for(PointT pointj: set_AiPCL.points){
+                    sum_traces += 1/std::pow(pcl_noise_.trace(),2);
+                    sum_pointsj.getArray3fMap() += pointj.getArray3fMap() * (float) 1.0/std::pow(pcl_noise_.trace(),2);
+                }
+                Eigen::Vector3f p_nu = Eigen::Vector3f(sum_pointsj.getArray3fMap() * 1/sum_traces);
+
+                // Normal (unitary) vector of the plane from PCA analysis
+
+
+
+
+
+                set_AiPCL.points.clear();
+            }
+        }
+    }
+    printf("Size of matches vector %d \n", matches_vec.size());
+
+    return matches_vec;
+}
+
+
+void ICPSimple::computePCAPcl(PointCloudT& set_Ai){
+
+    // Compute the mean of the PCL
+    Eigen::Vector4f com_Ai;
+    pcl::compute3DCentroid(set_Ai, com_Ai);
+
+    // Demean point cloud
+    PointCloudT set_Ai_demean;
+    pcl::demeanPointCloud(set_Ai, com_Ai, set_Ai_demean);
+
+    // Compute covariance matrix
+    Eigen::Matrix3d cov_mat;
+    pcl::computeCovarianceMatrix(set_Ai_demean, cov_mat);
+
+    // Extract eigenvalues and eigenvector from cov matrix
+    Eigen::EigenSolver<Eigen::Matrix3d> eigenSolver;
+    eigenSolver.compute(cov_mat, true);
+    auto eigenvalues = eigenSolver.eigenvalues();
+    auto eigenVectors = eigenSolver.eigenvectors();
+}
+
+
+std::vector<std::tuple<PointT, PointT>> ICPSimple::point2PointAssoc(PointCloudT &cloud_tf){
 
     // K nearest neighbor search
     int K = 3;
@@ -153,7 +245,7 @@ void ICPSimple::computeTransformationMatrix(const std::vector<std::tuple<PointT,
 double ICPSimple::computeRMSError(PointCloudT& cloud_tf){
 
     // Find matches tuples
-    std::vector<std::tuple<PointT, PointT>> matches_vec = matchPointClouds(cloud_tf);
+    std::vector<std::tuple<PointT, PointT>> matches_vec = point2PointAssoc(cloud_tf);
 
     // Compute RMS Error
     double rmsError = 0;
