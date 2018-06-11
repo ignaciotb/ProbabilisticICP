@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <random>
+#include <cmath>
 
 #include <pcl/io/ply_io.h>
 #include <pcl/point_types.h>
@@ -139,8 +141,50 @@ int main (int argc, char* argv[]) {
     pcl::transformPointCloud(*cloud_in, *cloud_icp, transformation_matrix);
     *cloud_tr = *cloud_icp;  // We backup cloud_icp into cloud_tr for later use
 
+    // Add independent gaussian noise to cloud_in and cloud_icp
+    std::random_device rd{};
+    std::mt19937 seed{rd()};
+    double pcl_std_dev = 0.01;
+    std::normal_distribution<double> d{0,pcl_std_dev};    // Inputs: mean and std_dev
+    for(unsigned int i=0; i<cloud_in->points.size(); i++){
+        cloud_in->points.at(i).x = cloud_in->points.at(i).x + d(seed);
+        cloud_in->points.at(i).y = cloud_in->points.at(i).y + d(seed);
+        cloud_in->points.at(i).z = cloud_in->points.at(i).z + d(seed);
+
+        cloud_icp->points.at(i).x = cloud_icp->points.at(i).x + d(seed);
+        cloud_icp->points.at(i).y = cloud_icp->points.at(i).y + d(seed);
+        cloud_icp->points.at(i).z = cloud_icp->points.at(i).z + d(seed);
+    }
+
+    // PCL noise covariance
+    Eigen::Matrix3d pcl_noise = Eigen::Matrix3d::Zero();
+    pcl_noise(0,0) = std::pow(pcl_std_dev,2);
+    pcl_noise(1,1) = std::pow(pcl_std_dev,2);
+    pcl_noise(2,2) = std::pow(pcl_std_dev,2);
+
+    // Apply initial (noisy) estimate of transform between trg and src point clouds
+    double tf_std_dev = 0.05;
+    std::normal_distribution<double> d2{0,tf_std_dev};
+    theta = M_PI / 8 + d2(seed);
+    transformation_matrix (0, 0) = cos (theta);
+    transformation_matrix (0, 1) = sin (theta);
+    transformation_matrix (1, 0) = -sin (theta);
+    transformation_matrix (1, 1) = cos (theta);
+
+    transformation_matrix (1, 3) += d2(seed);
+    transformation_matrix (2, 3) += d2(seed);
+    transformation_matrix (3, 3) += d2(seed);
+    pcl::transformPointCloud(*cloud_icp, *cloud_icp, transformation_matrix);
+
+    // Tf noise covariance  // TODO: make 6DOF matrix
+    Eigen::Matrix3d tf_noise = Eigen::Matrix3d::Zero();
+    tf_noise(0,0) = std::pow(tf_std_dev,2);
+    tf_noise(1,1) = std::pow(tf_std_dev,2);
+    tf_noise(2,2) = std::pow(tf_std_dev,2);
+
     // The Iterative Closest Point algorithm
-    boost::shared_ptr<ICPSimple> icp_solver(new ICPSimple(*cloud_in));
+    double delta_thr = 0.99; // Threshold for Mahalanobis distances in point-point matching
+    boost::shared_ptr<ICPSimple> icp_solver(new ICPSimple(*cloud_in, tf_noise, pcl_noise, delta_thr));
     printf("Solver created \n");
 
     // Construct KdTree for target pcl
