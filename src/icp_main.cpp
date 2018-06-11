@@ -157,7 +157,7 @@ int main (int argc, char* argv[]) {
     }
 
     // PCL noise covariance
-    Eigen::Matrix3d pcl_noise = Eigen::Matrix3d::Zero();
+    Eigen::Matrix3f pcl_noise = Eigen::Matrix3f::Zero();
     pcl_noise(0,0) = std::pow(pcl_std_dev,2);
     pcl_noise(1,1) = std::pow(pcl_std_dev,2);
     pcl_noise(2,2) = std::pow(pcl_std_dev,2);
@@ -177,7 +177,7 @@ int main (int argc, char* argv[]) {
     pcl::transformPointCloud(*cloud_icp, *cloud_icp, transformation_matrix);
 
     // Tf noise covariance  // TODO: make 6DOF matrix
-    Eigen::Matrix3d tf_noise = Eigen::Matrix3d::Zero();
+    Eigen::Matrix3f tf_noise = Eigen::Matrix3f::Zero();
     tf_noise(0,0) = std::pow(tf_std_dev,2);
     tf_noise(1,1) = std::pow(tf_std_dev,2);
     tf_noise(2,2) = std::pow(tf_std_dev,2);

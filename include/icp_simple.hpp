@@ -9,6 +9,7 @@
 #include <functional>
 
 #include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Eigenvalues>
 
 #include <boost/math/distributions.hpp>
@@ -21,7 +22,7 @@ class ICPSimple{
 public:
 
 
-    ICPSimple(PointCloudT &cloud_trg, const Eigen::Matrix3d& tf_noise, const Eigen::Matrix3d& pcl_noise, double delta_thr);
+    ICPSimple(PointCloudT &cloud_trg, const Eigen::Matrix3f& tf_noise, const Eigen::Matrix3f& pcl_noise, double delta_thr);
 
     void constructKdTree(const PointCloudT::Ptr cloud_trg);
 
@@ -35,8 +36,8 @@ private:
 
     // Inputs
     PointCloudT::Ptr cloud_trg_;
-    Eigen::Matrix3d tf_noise_;
-    Eigen::Matrix3d pcl_noise_;
+    Eigen::Matrix3f tf_noise_;
+    Eigen::Matrix3f pcl_noise_;
 
     // Estimated tf
     Eigen::Matrix4f tf_mat_;
@@ -64,7 +65,7 @@ private:
 
     double computeRMSError(PointCloudT &cloud_tf);
 
-    void computePCAPcl(PointCloudT &set_Ai);
+    Eigen::Vector3f computePCAPcl(PointCloudT &set_Ai);
 };
 
 #endif // ICP_SIMPLE_CPP
