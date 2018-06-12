@@ -1,6 +1,6 @@
-#include <icp_simple.hpp>
+#include <prob_icp.hpp>
 
-ICPSimple::ICPSimple(PointCloudT &cloud_ref, const Eigen::Matrix3f &tf_noise, const Eigen::Matrix3f &pcl_noise, double delta_thr){
+ProbabilisticICP::ProbabilisticICP(PointCloudT &cloud_ref, const Eigen::Matrix3f &tf_noise, const Eigen::Matrix3f &pcl_noise, double delta_thr){
 
     cloud_ref_.reset(new PointCloudT(cloud_ref));
     pcl::compute3DCentroid(*cloud_ref_, com_trg_);
@@ -17,25 +17,25 @@ ICPSimple::ICPSimple(PointCloudT &cloud_ref, const Eigen::Matrix3f &tf_noise, co
 
 }
 
-void ICPSimple::getTransformMatrix(Eigen::Matrix4f& transform_matrix){
+void ProbabilisticICP::getTransformMatrix(Eigen::Matrix4f& transform_matrix){
     transform_matrix = tf_mat_;
 }
 
-double ICPSimple::getRMSError(){
+double ProbabilisticICP::getRMSError(){
     return rms_error_;
 }
 
-void ICPSimple::constructKdTree(const PointCloudT::Ptr cloud_ref){
+void ProbabilisticICP::constructKdTree(const PointCloudT::Ptr cloud_ref){
     // Construct Kd Tree with target cloud
     kdtree_.setInputCloud(cloud_ref);
 }
 
-bool ICPSimple::converged(){
+bool ProbabilisticICP::converged(){
 
     return (std::abs(rms_error_ - rms_error_prev_) < 0.0001)? true: false;
 }
 
-void ICPSimple::alignStep(PointCloudT &cloud_new){
+void ProbabilisticICP::alignStep(PointCloudT &cloud_new){
 
     // Find matches tuples
     std::vector<std::tuple<PointT, PointT>> matches_vec;
@@ -60,7 +60,7 @@ void ICPSimple::alignStep(PointCloudT &cloud_new){
 }
 
 
-std::vector<std::tuple<PointT, PointT>> ICPSimple::point2PlaneAssoc(PointCloudT &cloud_new){
+std::vector<std::tuple<PointT, PointT>> ProbabilisticICP::point2PlaneAssoc(PointCloudT &cloud_new){
 
     // K nearest neighbor search
     std::cout << "Point to plane association" << std::endl;
@@ -154,7 +154,7 @@ std::vector<std::tuple<PointT, PointT>> ICPSimple::point2PlaneAssoc(PointCloudT 
 }
 
 
-std::vector<std::tuple<PointT, PointT>> ICPSimple::point2PointAssoc(PointCloudT &cloud_new){
+std::vector<std::tuple<PointT, PointT>> ProbabilisticICP::point2PointAssoc(PointCloudT &cloud_new){
 
     std::cout << "Point to point association" << std::endl;
 
@@ -212,7 +212,7 @@ std::vector<std::tuple<PointT, PointT>> ICPSimple::point2PointAssoc(PointCloudT 
 }
 
 
-Eigen::Vector3f ICPSimple::computePCAPcl(PointCloudT& set_Ai){
+Eigen::Vector3f ProbabilisticICP::computePCAPcl(PointCloudT& set_Ai){
 
     // Compute the mean of the PCL
     Eigen::Vector4f com_Ai;
@@ -244,7 +244,7 @@ Eigen::Vector3f ICPSimple::computePCAPcl(PointCloudT& set_Ai){
 }
 
 
-void ICPSimple::computeTransformationMatrix(const std::vector<std::tuple<PointT, PointT>>& matches_vec,
+void ProbabilisticICP::computeTransformationMatrix(const std::vector<std::tuple<PointT, PointT>>& matches_vec,
                                             const PointCloudT &cloud_new,
                                             Eigen::Matrix4f& transformation_matrix){
 
@@ -294,7 +294,7 @@ void ICPSimple::computeTransformationMatrix(const std::vector<std::tuple<PointT,
 
 }
 
-double ICPSimple::computeRMSError(PointCloudT& cloud_new){
+double ProbabilisticICP::computeRMSError(PointCloudT& cloud_new){
 
     // Find matches tuples
     std::vector<std::tuple<PointT, PointT>> matches_vec = point2PointAssoc(cloud_new);

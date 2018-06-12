@@ -17,12 +17,12 @@
 typedef pcl::PointXYZ PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
 
-class ICPSimple{
+class ProbabilisticICP{
 
 public:
 
 
-    ICPSimple(PointCloudT &cloud_trg, const Eigen::Matrix3f& tf_noise, const Eigen::Matrix3f& pcl_noise, double delta_thr);
+    ProbabilisticICP(PointCloudT &cloud_trg, const Eigen::Matrix3f& tf_noise, const Eigen::Matrix3f& pcl_noise, double delta_thr);
 
     void constructKdTree(const PointCloudT::Ptr cloud_trg);
 

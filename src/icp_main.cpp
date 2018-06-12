@@ -11,7 +11,7 @@
 
 #include <eigen3/Eigen/Core>
 
-#include <icp_simple.hpp>
+#include <prob_icp.hpp>
 
 typedef pcl::PointXYZ PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
@@ -184,7 +184,7 @@ int main (int argc, char* argv[]) {
 
     // The Iterative Closest Point algorithm
     double delta_thr = 0.99; // Threshold for Mahalanobis distances in point-point matching
-    boost::shared_ptr<ICPSimple> icp_solver(new ICPSimple(*cloud_in, tf_noise, pcl_noise, delta_thr));
+    boost::shared_ptr<ProbabilisticICP> icp_solver(new ProbabilisticICP(*cloud_in, tf_noise, pcl_noise, delta_thr));
     printf("Solver created \n");
 
     // Construct KdTree for target pcl

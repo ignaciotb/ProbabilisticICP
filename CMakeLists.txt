@@ -30,7 +30,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 add_executable (icp_main
         src/icp_main.cpp
-        src/icp_simple.cpp
+        src/prob_icp.cpp
 )
 
 target_link_libraries (icp_main
