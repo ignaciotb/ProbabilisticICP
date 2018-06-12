@@ -17,29 +17,34 @@ ProbabilisticICP::ProbabilisticICP(PointCloudT &cloud_ref, const Eigen::Matrix3f
 
 }
 
+
 void ProbabilisticICP::getTransformMatrix(Eigen::Matrix4f& transform_matrix){
     transform_matrix = tf_mat_;
 }
 
+
 double ProbabilisticICP::getRMSError(){
     return rms_error_;
 }
+
 
 void ProbabilisticICP::constructKdTree(const PointCloudT::Ptr cloud_ref){
     // Construct Kd Tree with target cloud
     kdtree_.setInputCloud(cloud_ref);
 }
 
+
 bool ProbabilisticICP::converged(){
 
     return (std::abs(rms_error_ - rms_error_prev_) < 0.0001)? true: false;
 }
 
+
 void ProbabilisticICP::alignStep(PointCloudT &cloud_new){
 
     // Find matches tuples
     std::vector<std::tuple<PointT, PointT>> matches_vec;
-    if(0.17 > rms_error_){
+    if(0.17 > rms_error_){  // TODO: define error threshold to switch between matching methods
         matches_vec = point2PlaneAssoc(cloud_new);
     }
     else{
@@ -62,9 +67,9 @@ void ProbabilisticICP::alignStep(PointCloudT &cloud_new){
 
 std::vector<std::tuple<PointT, PointT>> ProbabilisticICP::point2PlaneAssoc(PointCloudT &cloud_new){
 
-    // K nearest neighbor search
     std::cout << "Point to plane association" << std::endl;
 
+    // K nearest neighbor search
     int K = 4;
     std::vector<int> pointIdxNKNSearch(K);
     std::vector<float> pointNKNSquaredDistance(K);
@@ -218,13 +223,10 @@ Eigen::Vector3f ProbabilisticICP::computePCAPcl(PointCloudT& set_Ai){
     Eigen::Vector4f com_Ai;
     pcl::compute3DCentroid(set_Ai, com_Ai);
 
-    // Demean point cloud
-    PointCloudT set_Ai_demean;
-    pcl::demeanPointCloud(set_Ai, com_Ai, set_Ai_demean);
-
     // Compute covariance matrix
     Eigen::Matrix3f cov_mat;
-    pcl::computeCovarianceMatrix(set_Ai_demean, cov_mat);
+    pcl::computeCovarianceMatrixNormalized (set_Ai, com_Ai, cov_mat);
+//    pcl::computeCovarianceMatrix(set_Ai_demean, cov_mat);
 
     // Extract eigenvalues and eigenvector from cov matrix
     Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver;
