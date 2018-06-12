@@ -35,7 +35,7 @@ public:
 private:
 
     // Inputs
-    PointCloudT::Ptr cloud_trg_;
+    PointCloudT::Ptr cloud_ref_;
     Eigen::Matrix3f tf_noise_;
     Eigen::Matrix3f pcl_noise_;
 
