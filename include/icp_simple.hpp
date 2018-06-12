@@ -32,6 +32,8 @@ public:
 
     double getRMSError();
 
+    bool converged();
+
 private:
 
     // Inputs
@@ -50,6 +52,7 @@ private:
 
     // Convergence error
     double rms_error_;
+    double rms_error_prev_;
 
     // Aux
     double lambda_thr_;
@@ -66,6 +69,7 @@ private:
     double computeRMSError(PointCloudT &cloud_tf);
 
     Eigen::Vector3f computePCAPcl(PointCloudT &set_Ai);
+
 };
 
 #endif // ICP_SIMPLE_CPP

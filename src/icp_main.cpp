@@ -16,7 +16,7 @@
 typedef pcl::PointXYZ PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
 
-bool next_iteration = false;
+bool stop_icp = false;
 
 void print4x4Matrix (const Eigen::Matrix4f & matrix) {
     printf ("Rotation matrix :\n");
@@ -29,7 +29,7 @@ void print4x4Matrix (const Eigen::Matrix4f & matrix) {
 
 void keyboardEventOccurred (const pcl::visualization::KeyboardEvent& event, void* nothing) {
     if (event.getKeySym () == "space" && event.keyDown ())
-        next_iteration = true;
+        stop_icp = true;
 }
 
 void pclVisualizer(pcl::visualization::PCLVisualizer& viewer,
@@ -144,7 +144,7 @@ int main (int argc, char* argv[]) {
     // Add independent gaussian noise to cloud_in and cloud_icp
     std::random_device rd{};
     std::mt19937 seed{rd()};
-    double pcl_std_dev = 0.05;
+    double pcl_std_dev = 0.06;
     std::normal_distribution<double> d{0,pcl_std_dev};    // Inputs: mean and std_dev
     for(unsigned int i=0; i<cloud_in->points.size(); i++){
         cloud_in->points.at(i).x = cloud_in->points.at(i).x + d(seed);
@@ -163,7 +163,7 @@ int main (int argc, char* argv[]) {
     pcl_noise(2,2) = std::pow(pcl_std_dev,2);
 
     // Apply initial (noisy) estimate of transform between trg and src point clouds
-    double tf_std_dev = 0.15;
+    double tf_std_dev = 0.2;
     std::normal_distribution<double> d2{0,tf_std_dev};
     theta = M_PI / 8 + d2(seed);
     transformation_matrix (0, 0) = cos (theta);
@@ -199,29 +199,33 @@ int main (int argc, char* argv[]) {
     float bckgr_gray_level = 0.0;  // Black
     float txt_gray_lvl = 1.0 - bckgr_gray_level;
 
+    double covergence_error;
     // Display the visualiser
     while (!viewer.wasStopped()){
         viewer.spinOnce ();
 
-    // The user pressed "space" :
-    if (next_iteration){
-        printf("----------- Next iteration --------- \n");
-        // The Iterative Closest Point algorithm
-        time.tic ();
-        icp_solver->alignStep(*cloud_icp);
-        std::cout << "Applied 1 ICP iteration in " << time.toc () << " ms" << std::endl;
-        icp_solver->getTransformMatrix(transformation_matrix);
-        print4x4Matrix (transformation_matrix);  // Print the transformation between original pose and current pose
+        // The user pressed "space" :
+        if (!icp_solver->converged()){
+            printf("----------- Next iteration --------- \n");
+            // The Iterative Closest Point algorithm
+            time.tic ();
+            icp_solver->alignStep(*cloud_icp);
+            std::cout << "Applied 1 ICP iteration in " << time.toc () << " ms" << std::endl;
+            icp_solver->getTransformMatrix(transformation_matrix);
+            print4x4Matrix (transformation_matrix);  // Print the transformation between original pose and current pose
 
-        ss.str ("");
-        ss << iterations;
-        std::string iterations_cnt = "ICP iterations = " + ss.str ();
-        viewer.updateText(iterations_cnt, 10, 60, 16, txt_gray_lvl, txt_gray_lvl, txt_gray_lvl, "iterations_cnt");
+            ss.str ("");
+            ss << iterations;
+            std::string iterations_cnt = "ICP iterations = " + ss.str ();
+            viewer.updateText(iterations_cnt, 10, 60, 16, txt_gray_lvl, txt_gray_lvl, txt_gray_lvl, "iterations_cnt");
 
-        // Update point cloud viewer
-        viewer.updatePointCloud (cloud_icp, cloud_icp_color_h, "cloud_icp_v2");
+            // Update point cloud viewer
+            viewer.updatePointCloud (cloud_icp, cloud_icp_color_h, "cloud_icp_v2");
+
+            // Check for convergence
+            covergence_error = icp_solver->getRMSError();
         }
-        next_iteration = false;
     }
+
     return (0);
 }
